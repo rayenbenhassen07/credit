@@ -2,9 +2,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { FaArrowAltCircleLeft } from "react-icons/fa";
+
 import { Modal } from "@/components/Modal"; // Import the modal component
 import { ModalTransactions } from "@/components/ModalTransactions"; // Import the new modal component
+import Image from "next/image";
 
 export default function ClientPage({ params }) {
   const { clientId } = params;
@@ -79,30 +81,58 @@ export default function ClientPage({ params }) {
   }
 
   return (
-    <div className="p-6 bg-gray-100 min-h-screen">
-      <Button onClick={handleBack} className="mb-4 bg-blue-500 text-white">
-        Back
-      </Button>
-      <Card className="p-6 bg-white shadow-md rounded-md">
-        <h1 className="text-2xl font-bold mb-4">{client.name}</h1>
-        <p className="text-gray-600">Phone Number: {client.num}</p>
-        <p className="text-gray-600">Credit: {client.gredit} TND</p>
-        <p className="text-gray-600">Designation: {client.designation}</p>
-        <p className="text-gray-600">
+    <div className="p-6 bg-gray-100 min-h-screen font-semibold text-sm lg:font-bold lg:text-xl">
+      {/* 
+      client.designation}
           Date Added: {new Date(client.date).toLocaleDateString()}
-        </p>
-        <div className="mt-4 flex space-x-4">
-          <Button onClick={handleAchat} className="bg-green-500 text-white">
-            Achat & Acompte
-          </Button>
-          <Button
-            onClick={handleHistorique}
-            className="bg-purple-500 text-white"
-          >
-            Historique
-          </Button>
+      */}
+      <div className="flex justify-between items-center bg-white p-4">
+        <div className="flex justify-center items-center gap-8 ">
+          <div onClick={handleBack} className="cursor-pointer">
+            <FaArrowAltCircleLeft size="32" />
+          </div>
+          <div className="flex justify-center items-center gap-4 ">
+            <div className="flex justify-center items-center gap-4">
+              <div className="">
+                <Image
+                  alt=""
+                  src="/avatar.png"
+                  width={200}
+                  height={200}
+                  className="w-12 "
+                />
+              </div>
+              <div className="flex flex-col items-start ">
+                <div>{client.name}</div>
+                <div>{client.num}</div>
+              </div>
+            </div>
+          </div>
         </div>
-      </Card>
+
+        <Button onClick={handleHistorique} className="bg-purple-500 text-white">
+          Historique
+        </Button>
+      </div>
+
+      <div className="mt-20 bg-white p-4 flex justify-center items-center">
+        Solde crédit avant application : 236 000 TND
+      </div>
+
+      <div className="mt-20 p-4 bg-white  flex flex-col gap-10 justify-center items-center ">
+        <Button
+          onClick={handleAchat}
+          className="bg-green-500 w-[80%] lg:w-[50%] py-8 text-white font-bold text-xl"
+        >
+          Achat & Acompte
+        </Button>
+
+        <div>Montant crédit</div>
+
+        <div className="w-[80%] lg:w-[50%] py-8 bg-red-500 text-white text-center font-bold text-xl  ">
+          {client.gredit} TND
+        </div>
+      </div>
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

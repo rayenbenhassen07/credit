@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { FaArrowAltCircleLeft } from "react-icons/fa";
 
 export default function AjouterClient() {
   const [formData, setFormData] = useState({
@@ -18,6 +19,10 @@ export default function AjouterClient() {
       ...formData,
       [name]: value,
     });
+  };
+
+  const handleBack = () => {
+    router.push("/");
   };
 
   const handleSubmit = async (e) => {
@@ -47,6 +52,12 @@ export default function AjouterClient() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <div
+        onClick={handleBack}
+        className="absolute top-10 left-10 cursor-pointer"
+      >
+        <FaArrowAltCircleLeft size="40" />
+      </div>
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded shadow-md">
         <h1 className="text-2xl font-bold text-center">
           Ajouter nouveau Client

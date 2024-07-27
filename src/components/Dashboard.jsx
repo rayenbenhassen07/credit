@@ -12,40 +12,135 @@ import {
 } from "@/components/ui/table";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ModalTransactions } from "./ModalTransactions";
+import { ModalTop10client } from "./ModalTop10client";
+import { Modal2Mois } from "./Modal2Mois";
+import UploadFile from "./UploadFile";
+import { ConfirmDeleteModal } from "./ConfirmDeleteModal"; // Import the confirmation modal
 
 export function Dashboard() {
   const router = useRouter();
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState(null);
+  const [isModalTransactionsOpen, setIsModalTransactionsOpen] = useState(false);
+  const [isModalTop10client, setIsModalTop10client] = useState(false);
+  const [isModal2Mois, setModal2Mois] = useState(false);
+  const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
+  const [selectedClientId, setSelectedClientId] = useState(null);
+  const [totalCredit, setTotalCredit] = useState(0);
+  const [totalCreditOlderThanTwoMonths, setTotalCreditOlderThanTwoMonths] =
+    useState(0);
+  const [topCreditClientsTotal, setTopCreditClientsTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  const fetchClients = async (page) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch(`/api/clients?page=${page}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.length === 0) {
+          setHasMore(false);
+        } else {
+          setClients((prevClients) => {
+            const clientMap = new Map(
+              prevClients.map((client) => [client.id, client])
+            );
+            data.forEach((client) => clientMap.set(client.id, client));
+            return Array.from(clientMap.values());
+          });
+        }
+      } else {
+        const data = await res.json();
+        setError(data.error || "Failed to fetch clients");
+      }
+    } catch (error) {
+      setError("Failed to fetch clients");
+      console.error("Failed to fetch clients", error);
+    }
+    setIsLoading(false);
+  };
+
+  const fetchMetrics = async () => {
+    try {
+      const resTotalCredit = await fetch("/api/getTotalCredit");
+      if (resTotalCredit.ok) {
+        const totalCredit = await resTotalCredit.json();
+        setTotalCredit(totalCredit);
+      } else {
+        const data = await resTotalCredit.json();
+        setError(data.error || "Failed to fetch total credit");
+      }
+
+      const resTotalCreditOlderThanTwoMonths = await fetch(
+        "/api/getTotalCredit2Moins"
+      );
+      if (resTotalCreditOlderThanTwoMonths.ok) {
+        const totalCreditOlderThanTwoMonths =
+          await resTotalCreditOlderThanTwoMonths.json();
+        setTotalCreditOlderThanTwoMonths(totalCreditOlderThanTwoMonths);
+      } else {
+        const data = await resTotalCreditOlderThanTwoMonths.json();
+        setError(
+          data.error || "Failed to fetch total credit older than two months"
+        );
+      }
+
+      const resTopCreditClients = await fetch("/api/getTotalCredit10Client");
+      if (resTopCreditClients.ok) {
+        const { totalCredit } = await resTopCreditClients.json();
+        setTopCreditClientsTotal(totalCredit);
+      } else {
+        const data = await resTopCreditClients.json();
+        setError(data.error || "Failed to fetch top credit clients");
+      }
+    } catch (error) {
+      setError("Failed to fetch metrics");
+      console.error("Failed to fetch metrics", error);
+    }
+  };
 
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const res = await fetch("/api/clients");
-        if (res.ok) {
-          const data = await res.json();
-          setClients(data);
-        } else {
-          const data = await res.json();
-          setError(data.error || "Failed to fetch clients");
-        }
-      } catch (error) {
-        setError("Failed to fetch clients");
-        console.error("Failed to fetch clients", error);
-      }
-    };
+    fetchClients(page);
+  }, [page]);
 
-    fetchClients();
+  useEffect(() => {
+    fetchMetrics();
   }, []);
 
-  const handleDeleteClient = async (clientId) => {
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + document.documentElement.scrollTop !==
+          document.documentElement.offsetHeight ||
+        isLoading ||
+        !hasMore
+      )
+        return;
+      setPage((prevPage) => prevPage + 1);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [isLoading, hasMore]);
+
+  const handleDeleteClient = async () => {
     try {
-      const res = await fetch(`/api/clients/${clientId}`, {
+      const res = await fetch(`/api/clients/${selectedClientId}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        setClients(clients.filter((client) => client.id !== clientId));
+        setClients((prevClients) =>
+          prevClients.filter((client) => client.id !== selectedClientId)
+        );
+        // Refresh metrics
+        await fetchMetrics();
+        setIsConfirmationModalOpen(false);
       } else {
         const data = await res.json();
         setError(data.error || "Failed to delete client");
@@ -54,6 +149,16 @@ export function Dashboard() {
       setError("Failed to delete client");
       console.error("Failed to delete client", error);
     }
+  };
+
+  const handleOpenModal = (clientId) => {
+    setSelectedClientId(clientId);
+    setIsModalTransactionsOpen(true);
+  };
+
+  const handleOpenConfirmationModal = (clientId) => {
+    setSelectedClientId(clientId);
+    setIsConfirmationModalOpen(true);
   };
 
   const filteredClients = clients.filter((client) => {
@@ -72,26 +177,44 @@ export function Dashboard() {
           <div className="flex items-center">
             <RefreshCwIcon className="w-6 h-6 text-blue-800" />
             <div className="ml-4">
-              <div className="text-2xl font-bold">10000 TND</div>
+              <div className="text-2xl font-bold">{totalCredit} TND</div>
               <div className="text-sm text-gray-600">Récap Total Crédit</div>
             </div>
           </div>
         </Card>
-        <Card className="flex items-center justify-between p-4 bg-blue-50">
+        <Card
+          className="flex items-center justify-between p-4 bg-blue-50 hover:bg-blue-100 transition cursor-pointer"
+          onClick={() => {
+            setModal2Mois(true);
+          }}
+        >
           <div className="flex items-center">
             <ClockIcon className="w-6 h-6 text-blue-500" />
             <div className="ml-4">
-              <div className="text-2xl font-bold">20500 TND</div>
-              <div className="text-sm text-gray-600">Les Plus ancien</div>
+              <div className="text-2xl font-bold">
+                {totalCreditOlderThanTwoMonths} TND
+              </div>
+              <div className="text-sm text-gray-600">
+                Crédit total des clients ayant une date supérieure à 2 mois
+              </div>
             </div>
           </div>
         </Card>
-        <Card className="flex items-center justify-between p-4 bg-blue-50">
+        <Card
+          className="flex items-center justify-between p-4 bg-blue-50 hover:bg-blue-100 transition cursor-pointer"
+          onClick={() => {
+            setIsModalTop10client(true);
+          }}
+        >
           <div className="flex items-center">
             <ArrowUpIcon className="w-6 h-6 text-blue-500" />
             <div className="ml-4">
-              <div className="text-2xl font-bold">100000 TND</div>
-              <div className="text-sm text-gray-600">Les plus crédité</div>
+              <div className="text-2xl font-bold">
+                {topCreditClientsTotal} TND
+              </div>
+              <div className="text-sm text-gray-600">
+                Les clients les plus crédités (top 10)
+              </div>
             </div>
           </div>
         </Card>
@@ -123,75 +246,93 @@ export function Dashboard() {
           <TableHeader className="bg-blue-100">
             <TableRow>
               <TableHead className="p-4">Nom</TableHead>
-              <TableHead className="p-4">Numéro Téléphone</TableHead>
+              <TableHead className="p-4 hidden lg:table-cell">
+                Numéro Téléphone
+              </TableHead>
               <TableHead className="p-4">Total Crédit</TableHead>
-              <TableHead className="p-4">Désignation</TableHead>
-              <TableHead className="p-4">Date Dernière Crédit</TableHead>
+              <TableHead className="p-4 hidden lg:table-cell">
+                Désignation
+              </TableHead>
+              <TableHead className="p-4 hidden lg:table-cell">
+                Date Dernière Crédit
+              </TableHead>
               <TableHead className="p-4">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClients.map((client) => (
-              <TableRow key={client.id}>
-                <TableCell className="p-4">{client.name}</TableCell>
-                <TableCell className="p-4">{client.num}</TableCell>
-                <TableCell className="p-4">{client.gredit}</TableCell>
-                <TableCell className="p-4">{client.designation}</TableCell>
-                <TableCell className="p-4">{client.date}</TableCell>
-                <TableCell className="p-4 flex space-x-2">
-                  <Button variant="ghost" size="icon">
-                    <RefreshCwIcon className="w-4 h-4 text-gray-500" />
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      router.push(`/clients/${client.id}`);
-                    }}
-                    variant="ghost"
-                    size="icon"
-                  >
-                    <FilePenIcon className="w-4 h-4 text-gray-500" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeleteClient(client.id)}
-                  >
-                    <TrashIcon className="w-4 h-4 text-gray-500" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {filteredClients
+              .sort((a, b) => b.id - a.id)
+              .map((client) => (
+                <TableRow key={client.id}>
+                  <TableCell className="p-4">{client.name}</TableCell>
+                  <TableCell className="p-4 hidden lg:table-cell">
+                    {client.num}
+                  </TableCell>
+                  <TableCell className="p-4">{client.gredit}</TableCell>
+                  <TableCell className="p-4 hidden lg:table-cell">
+                    {client.designation}
+                  </TableCell>
+                  <TableCell className="p-4 hidden lg:table-cell">
+                    {new Date(client.date).toISOString().split("T")[0]}
+                  </TableCell>
+                  <TableCell className="p-4 flex lg:space-x-2">
+                    <Button
+                      onClick={() => handleOpenModal(client.id)}
+                      variant="ghost"
+                      size="icon"
+                    >
+                      <RefreshCwIcon className="w-4 h-4 text-gray-500" />
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        router.push(`/clients/${client.id}`);
+                      }}
+                      variant="ghost"
+                      size="icon"
+                    >
+                      <FilePenIcon className="w-4 h-4 text-gray-500" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenConfirmationModal(client.id)}
+                    >
+                      <TrashIcon className="w-4 h-4 text-gray-500" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
+        {isLoading && <div>Loading...</div>}
+        {!hasMore && <div>No more clients</div>}
+        {error && <div>{error}</div>}
       </div>
-      <div className="flex justify-center mt-4">
-        <nav className="flex items-center space-x-2">
-          <Button variant="ghost" size="icon">
-            <ChevronLeftIcon className="w-4 h-4 text-gray-500" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            1
-          </Button>
-          <Button variant="ghost" size="icon">
-            2
-          </Button>
-          <Button variant="ghost" size="icon">
-            3
-          </Button>
-          <Button variant="ghost" size="icon">
-            4
-          </Button>
-          <Button variant="ghost" size="icon">
-            ...
-          </Button>
-          <Button variant="ghost" size="icon">
-            10
-          </Button>
-          <Button variant="ghost" size="icon">
-            <ChevronRightIcon className="w-4 h-4 text-gray-500" />
-          </Button>
-        </nav>
-      </div>
+
+      <ModalTransactions
+        isOpen={isModalTransactionsOpen}
+        onClose={() => setIsModalTransactionsOpen(false)}
+        id={selectedClientId}
+      />
+
+      <ModalTop10client
+        isOpen={isModalTop10client}
+        onClose={() => setIsModalTop10client(false)}
+        id={selectedClientId}
+      />
+
+      <Modal2Mois
+        isOpen={isModal2Mois}
+        onClose={() => setModal2Mois(false)}
+        id={selectedClientId}
+      />
+
+      <ConfirmDeleteModal
+        isOpen={isConfirmationModalOpen}
+        onClose={() => setIsConfirmationModalOpen(false)}
+        onConfirm={handleDeleteClient}
+        message="Êtes-vous sûr de vouloir supprimer ce client ?"
+      />
     </div>
   );
 }
@@ -283,7 +424,7 @@ function FilePenIcon(props) {
       height="24"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke="blue"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -346,7 +487,7 @@ function TrashIcon(props) {
       height="24"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke="red"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -367,7 +508,7 @@ function XIcon(props) {
       height="24"
       viewBox="0 0 24 24"
       fill="none"
-      stroke="currentColor"
+      stroke="blue"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"

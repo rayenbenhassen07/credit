@@ -5,16 +5,23 @@ export async function DELETE(req, { params }) {
   const { clientId } = params;
 
   try {
+    // Delete all transactions related to the client
+    await prisma.transaction.deleteMany({
+      where: { clientId: parseInt(clientId) },
+    });
+
+    // Delete the client
     await prisma.client.delete({
       where: { id: parseInt(clientId) },
     });
+
     return NextResponse.json(
-      { message: "Client deleted successfully" },
+      { message: "Client and related transactions deleted successfully" },
       { status: 200 }
     );
   } catch (error) {
     return NextResponse.json(
-      { error: "Failed to delete client" },
+      { error: "Failed to delete client and related transactions" },
       { status: 500 }
     );
   }

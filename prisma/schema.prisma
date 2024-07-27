@@ -9,11 +9,11 @@ datasource db {
 
 model Client {
   id            Int                  @id @default(autoincrement())
-  name          String
-  num           String
-  gredit        Float
-  designation   String
-  date          DateTime             @default(now())
+  name          String?
+  num           String?
+  gredit        Float?
+  designation   String?
+  date          DateTime?             @default(now())
   transactions  Transaction[]
 }
 
@@ -28,3 +28,11 @@ model Transaction {
 
   @@index([clientId])
 }
+
+model User {
+  id       Int      @id @default(autoincrement())
+  name     String?
+  email    String   @unique
+  password String
+}
+
