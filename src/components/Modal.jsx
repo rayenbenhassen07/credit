@@ -3,13 +3,17 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export function Modal({ isOpen, onClose, id }) {
-  if (!isOpen) return null;
+  // State and effect hooks should be defined here at the top level
   const [currentDate, setCurrentDate] = useState("");
 
+  // Effect hook to set the current date
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     setCurrentDate(today);
   }, []);
+
+  // Early return if the modal is not open
+  if (!isOpen) return null;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
