@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import { ModalTransactions } from "./ModalTransactions";
 import { ModalTop10client } from "./ModalTop10client";
 import { Modal2Mois } from "./Modal2Mois";
-import UploadFile from "./UploadFile";
+
 import { ConfirmDeleteModal } from "./ConfirmDeleteModal"; // Import the confirmation modal
 
 export function Dashboard() {
